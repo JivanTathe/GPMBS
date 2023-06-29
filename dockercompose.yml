@@ -1,0 +1,47 @@
+version: '3'
+services:
+  spark-job:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./path/to/spark-job:/app
+    environment:
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_APPLICATION_MAIN_CLASS=com.example.Main
+      - SPARK_APPLICATION_ARGS=arg1 arg2
+    depends_on:
+      - spark-master
+    networks:
+      - spark-network
+
+  spark-history-server:
+    image: gcr.io/spark-operator/spark:v2.4.0
+    command:
+      - /sbin/tini
+      - -s
+      - --
+      - - /opt/spark/bin/spark-class
+      - -Dspark.history.fs.logDirectory=/[PATH TO LOG DIR]/
+      - org.apache.spark.deploy.history.HistoryServer
+    volumes:
+      - /[PATH TO LOG DIR]:/[PATH TO LOG DIR]
+    ports:
+      - 18080:18080
+    networks:
+      - spark-network
+
+  spark-master:
+    image: gcr.io/spark-operator/spark:v2.4.0
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master --host spark-master
+    environment:
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+    ports:
+      - 7077:7077
+      - 8080:8080
+    networks:
+      - spark-network
+
+networks:
+  spark-network:
